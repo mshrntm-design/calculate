@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="周速計算">
+<title>周速計算</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    background: #f2f2f7;
+    min-height: 100vh;
+  }
+  .header {
+    background: #fff;
+    border-bottom: 0.5px solid #c8c7cc;
+    padding: 16px 20px 12px;
+    text-align: center;
+  }
+  .header h1 { font-size: 17px; font-weight: 600; color: #1c1c1e; }
+  .header p { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+  .section { margin: 20px 16px 0; }
+  .section-label {
+    font-size: 12px; color: #6d6d72;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 0 4px; margin-bottom: 6px;
+  }
+  .card { background: #fff; border-radius: 12px; overflow: hidden; }
+  .field {
+    display: flex; align-items: center;
+    padding: 0 16px; min-height: 64px;
+    border-bottom: 0.5px solid #e5e5ea;
+    position: relative;
+  }
+  .field:last-child { border-bottom: none; }
+  .field-label { flex: 0 0 auto; width: 64px; }
+  .field-name { font-size: 15px; font-weight: 500; color: #1c1c1e; }
+  .field-unit { font-size: 11px; color: #8e8e93; margin-top: 1px; }
+  .field-symbol { flex: 0 0 28px; font-size: 20px; color: #c7c7cc; text-align: center; }
+  .field input {
+    flex: 1; border: none; outline: none;
+    font-size: 24px; font-weight: 300; color: #1c1c1e;
+    text-align: right; background: transparent;
+    padding: 0; -webkit-appearance: none;
+    min-width: 0;
+  }
+  .field input::placeholder { color: #c7c7cc; }
+  .field input.result {
+    color: #007aff;
+    pointer-events: none;
+  }
+  .field-badge {
+    flex: 0 0 auto;
+    margin-left: 8px;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e8f0fe;
+    color: #007aff;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+  .field-badge.show { opacity: 1; }
+  .btn-area { margin: 20px 16px; display: flex; gap: 10px; }
+  .btn-calc {
+    flex: 1; height: 54px; border-radius: 12px; border: none;
+    background: #007aff; color: #fff;
+    font-size: 17px; font-weight: 600; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-calc:active { opacity: 0.75; }
+  .btn-reset {
+    width: 54px; height: 54px; border-radius: 12px;
+    border: 0.5px solid #c8c7cc; background: #fff;
+    color: #8e8e93; font-size: 24px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-reset:active { opacity: 0.75; }
+  .msg {
+    margin: 0 16px; padding: 14px 16px;
+    border-radius: 12px; font-size: 14px;
+    text-align: center; display: none;
+  }
+  .msg.show { display: block; }
+  .msg.error { background: #fff3f3; color: #ff3b30; }
+  .msg.info { background: #f0f8ff; color: #007aff; }
+  .footer {
+    padding: 20px 16px 16px;
+    text-align: center; color: #c7c7cc; font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>周速計算</h1>
+  <p>2つ入力して「計算する」をタップ</p>
+</div>
+
+<div class="section">
+  <div class="card">
+    <div class="field">
+      <div class="field-label">
+        <div class="field-name">周速</div>
+        <div class="field-unit">m/min</div>
+      </div>
+      <div class="field-symbol">V</div>
+      <input type="number" id="v" inputmode="decimal" placeholder="空欄">
+      <div class="field-badge" id="badge-v">計算結果</div>
+    </div>
+    <div class="field">
+      <div class="field-label">
+        <div class="field-name">回転数</div>
+        <div class="field-unit">rpm</div>
+      </div>
+      <div class="field-symbol">N</div>
+      <input type="number" id="n" inputmode="decimal" placeholder="空欄">
+      <div class="field-badge" id="badge-n">計算結果</div>
+    </div>
+    <div class="field">
+      <div class="field-label">
+        <div class="field-name">直径</div>
+        <div class="field-unit">mm</div>
+      </div>
+      <div class="field-symbol">D</div>
+      <input type="number" id="d" inputmode="decimal" placeholder="空欄">
+      <div class="field-badge" id="badge-d">計算結果</div>
+    </div>
+  </div>
+</div>
+
+<div class="btn-area">
+  <button class="btn-calc" id="btn-calc">計算する</button>
+  <button class="btn-reset" id="btn-reset">↺</button>
+</div>
+
+<div class="msg" id="msg"></div>
+
+<div class="footer">V = π × D × N ÷ 1000</div>
+
+<script>
+var ids = ['v', 'n', 'd'];
+
+function showMsg(text, type) {
+  var el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg show ' + type;
+}
+
+function hideMsg() {
+  document.getElementById('msg').className = 'msg';
+}
+
+function calculate() {
+  hideMsg();
+  ids.forEach(function(id) {
+    document.getElementById(id).classList.remove('result');
+    document.getElementById('badge-' + id).classList.remove('show');
+  });
+
+  var v = document.getElementById('v').value.trim();
+  var n = document.getElementById('n').value.trim();
+  var d = document.getElementById('d').value.trim();
+
+  var filled = [v !== '', n !== '', d !== ''];
+  var count = filled.filter(Boolean).length;
+
+  if (count === 3) {
+    showMsg('3つすべて入力されています。求めたい項目を1つ空欄にしてください。', 'error');
+    return;
+  }
+  if (count < 2) {
+    showMsg('2つの項目に数値を入力してください。', 'error');
+    return;
+  }
+
+  var vn = parseFloat(v);
+  var nn = parseFloat(n);
+  var dn = parseFloat(d);
+  var result, targetId;
+
+  if (!filled[0]) {
+    // Vを計算
+    if (nn <= 0 || dn <= 0) { showMsg('0より大きい値を入力してください。', 'error'); return; }
+    result = Math.PI * dn * nn / 1000;
+    targetId = 'v';
+  } else if (!filled[1]) {
+    // Nを計算
+    if (vn <= 0 || dn <= 0) { showMsg('0より大きい値を入力してください。', 'error'); return; }
+    result = vn * 1000 / (Math.PI * dn);
+    targetId = 'n';
+  } else {
+    // Dを計算
+    if (vn <= 0 || nn <= 0) { showMsg('0より大きい値を入力してください。', 'error'); return; }
+    result = vn * 1000 / (Math.PI * nn);
+    targetId = 'd';
+  }
+
+  if (!isFinite(result) || result <= 0) {
+    showMsg('計算できませんでした。入力値を確認してください。', 'error');
+    return;
+  }
+
+  var disp = result >= 1000 ? Math.round(result).toLocaleString()
+           : result >= 10   ? result.toFixed(1)
+           :                  result.toFixed(2);
+
+  var inp = document.getElementById(targetId);
+  inp.value = disp.replace(/,/g, '');
+  inp.classList.add('result');
+  document.getElementById('badge-' + targetId).classList.add('show');
+}
+
+function reset() {
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    el.value = '';
+    el.classList.remove('result');
+    document.getElementById('badge-' + id).classList.remove('show');
+  });
+  hideMsg();
+}
+
+document.getElementById('btn-calc').addEventListener('click', calculate);
+document.getElementById('btn-reset').addEventListener('click', reset);
+</script>
+</body>
+</html>
